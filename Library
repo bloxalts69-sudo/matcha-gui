@@ -20,9 +20,13 @@ IreXion.__index = IreXion
 -- ------------------------------------------------
 --  Internals
 -- ------------------------------------------------
-local Mouse      = game.Players.LocalPlayer:GetMouse()
-local drawings   = {}   -- all Drawing objects (for cleanup)
-local connections = {}  -- all RBXScriptConnections
+local drawings    = {}   -- all Drawing objects (for cleanup)
+local connections = {}   -- all RBXScriptConnections
+
+-- Wait for LocalPlayer to be available
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait() and Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 
 local function newDrawing(class, props)
     local d = Drawing.new(class)
