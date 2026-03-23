@@ -1,30 +1,46 @@
 -- ============================================================
---  IreXion UI Library v1.1
+--  IreXion UI Library v1.2
+--  Compatible: Synapse X, KRNL, Fluxus, Oxygen U, etc.
 -- ============================================================
+
+-- ── Safe hex helper (Color3.fromHex unsupported on some executors) ──
+local function hex(h)
+    h = h:gsub("#", "")
+    return Color3.fromRGB(
+        tonumber(h:sub(1,2), 16),
+        tonumber(h:sub(3,4), 16),
+        tonumber(h:sub(5,6), 16)
+    )
+end
+
+-- ── Safe task wrappers ────────────────────────────────────────
+local _spawn = (typeof(task) == "table" and task.spawn) or spawn
+local _wait  = (typeof(task) == "table" and task.wait)  or wait
+local _delay = (typeof(task) == "table" and task.delay) or delay
+
+-- ── Forward declare TabMethods ────────────────────────────────
+local TabMethods = {}
+TabMethods.__index = TabMethods
 
 local IreXion = {}
 IreXion.__index = IreXion
 
--- Forward declare TabMethods BEFORE IreXion:AddTab uses it
-local TabMethods = {}
-TabMethods.__index = TabMethods
-
 -- ── Palette ──────────────────────────────────────────────────
 local COL = {
-    BG         = Color3.fromHex("#111111"),
-    SIDEBAR    = Color3.fromHex("#0d0d0d"),
-    CONTENT    = Color3.fromHex("#141414"),
-    TITLEBAR   = Color3.fromHex("#0a0a0a"),
-    GREEN      = Color3.fromHex("#00FF00"),
-    WHITE      = Color3.fromHex("#FFFFFF"),
-    GRAY       = Color3.fromHex("#888888"),
-    DARK       = Color3.fromHex("#2a2a2a"),
-    SEPARATOR  = Color3.fromHex("#1f1f1f"),
-    TOGGLE_BG  = Color3.fromHex("#2d2d2d"),
-    BORDER     = Color3.fromHex("#222222"),
-    BORDER2    = Color3.fromHex("#333333"),
-    INNER_SEP  = Color3.fromHex("#1e1e1e"),
-    ITEM_BG    = Color3.fromHex("#333333"),
+    BG         = hex("#111111"),
+    SIDEBAR    = hex("#0d0d0d"),
+    CONTENT    = hex("#141414"),
+    TITLEBAR   = hex("#0a0a0a"),
+    GREEN      = hex("#00FF00"),
+    WHITE      = hex("#FFFFFF"),
+    GRAY       = hex("#888888"),
+    DARK       = hex("#2a2a2a"),
+    SEPARATOR  = hex("#1f1f1f"),
+    TOGGLE_BG  = hex("#2d2d2d"),
+    BORDER     = hex("#222222"),
+    BORDER2    = hex("#333333"),
+    INNER_SEP  = hex("#1e1e1e"),
+    ITEM_BG    = hex("#333333"),
 }
 
 -- ── Layout ───────────────────────────────────────────────────
@@ -60,7 +76,7 @@ local KEY_NAMES = {
 
 -- ── Drawing helpers ──────────────────────────────────────────
 local function Sq(x, y, w, h, col, filled, z, thickness)
-    local s = Drawing.new("Square")
+    local s        = Drawing.new("Square")
     s.Visible      = true
     s.Transparency = 1
     s.Color        = col
@@ -73,16 +89,16 @@ local function Sq(x, y, w, h, col, filled, z, thickness)
 end
 
 local function Tx(x, y, text, size, col, z, center, outline)
-    local t = Drawing.new("Text")
-    t.Visible   = true
-    t.Text      = text
-    t.Size      = size
-    t.Color     = col
-    t.ZIndex    = z
-    t.Position  = Vector2.new(x, y)
-    t.Center    = center or false
-    t.Outline   = (outline ~= false)
-    t.Font      = Drawing.Fonts.UI
+    local t      = Drawing.new("Text")
+    t.Visible    = true
+    t.Text       = text
+    t.Size       = size
+    t.Color      = col
+    t.ZIndex     = z
+    t.Position   = Vector2.new(x, y)
+    t.Center     = center or false
+    t.Outline    = (outline ~= false)
+    t.Font       = Drawing.Fonts.UI
     return t
 end
 
@@ -91,9 +107,11 @@ local function Hit(el, mx, my)
        and my >= el.Position.Y and my <= el.Position.Y + el.Size.Y
 end
 
--- ── Window ────────────────────────────────────────────────────
+-- ═════════════════════════════════════════════════════════════
+--  WINDOW
+-- ═════════════════════════════════════════════════════════════
 function IreXion.new(title1, title2)
-    local self = setmetatable({}, IreXion)
+    local self   = setmetatable({}, IreXion)
 
     local wx, wy = CFG.WIN_X, CFG.WIN_Y
     local ww, wh = CFG.WIN_W, CFG.WIN_H
@@ -108,37 +126,43 @@ function IreXion.new(title1, title2)
     self._activeTab      = nil
     self._inputItems     = {}
 
-    -- Chrome
+    -- Window chrome
     Sq(wx, wy, ww, wh, COL.BG,       true,  1)
     Sq(wx, wy, ww, th, COL.TITLEBAR, true,  2)
     Sq(wx, wy+th-2, ww, 2, COL.GREEN, true, 3)
     Sq(wx, wy, ww, wh, COL.BORDER,  false, 10, 1)
 
+    -- Title text
     local mid = wx + ww/2
     Tx(mid-68, wy+13, (title1 or "IreXion").." - ", 18, COL.WHITE, 4)
     Tx(mid+20,  wy+13, title2 or "UI Library",       18, COL.GREEN, 4)
 
-    Sq(wx,      wy+th, sw, wh-th, COL.SIDEBAR,   true, 2)
+    -- Sidebar
+    Sq(wx,      wy+th, sw, wh-th, COL.SIDEBAR,  true, 2)
     Sq(wx+sw-1, wy+th, 1,  wh-th, COL.INNER_SEP, true, 3)
-    Sq(cx,      wy+th, cw, wh-th, COL.CONTENT,   true, 2)
+
+    -- Content area
+    Sq(cx, wy+th, cw, wh-th, COL.CONTENT, true, 2)
     Tx(cx+cw/2, wy+th+10, "Category", 15, COL.WHITE, 3, true)
     Sq(cx+CFG.PAD, wy+th+28, cw-CFG.PAD*2, 1, COL.SEPARATOR, true, 3)
 
     self._contentY = wy + th + 30
     self._sidebarY = wy + th + CFG.TAB_START_Y
 
-    -- Input loop (no 'continue' - just wrapped in if)
+    -- Input loop
     local Mouse      = game.Players.LocalPlayer:GetMouse()
     local lastMouse1 = false
 
-    task.spawn(function()
+    _spawn(function()
         while true do
-            task.wait(0.01)
+            _wait(0.01)
             if isrbxactive() then
                 local mouse1 = ismouse1pressed()
-                local mx, my = Mouse.X, Mouse.Y
-                for _, item in ipairs(self._inputItems) do
-                    if item.update then
+                local mx     = Mouse.X
+                local my     = Mouse.Y
+                for i = 1, #self._inputItems do
+                    local item = self._inputItems[i]
+                    if item and item.update then
                         item.update(mx, my, mouse1, lastMouse1)
                     end
                 end
@@ -152,23 +176,33 @@ end
 
 -- ── Tab switching ─────────────────────────────────────────────
 function IreXion:_switchTab(tab)
+    -- Hide all
     for _, t in ipairs(self._tabs) do
-        for _, obj in ipairs(t._rows) do obj.Visible = false end
-        for _, it  in ipairs(t._inputs) do
+        for _, obj in ipairs(t._rows) do
+            obj.Visible = false
+        end
+        for _, it in ipairs(t._inputs) do
             if it._objs then
-                for _, obj in ipairs(it._objs) do obj.Visible = false end
+                for _, obj in ipairs(it._objs) do
+                    obj.Visible = false
+                end
             end
         end
         t._indicator.Visible = false
         t._label.Visible     = false
     end
 
+    -- Show chosen
     tab._indicator.Visible = true
     tab._label.Visible     = true
-    for _, obj in ipairs(tab._rows)   do obj.Visible = true end
-    for _, it  in ipairs(tab._inputs) do
+    for _, obj in ipairs(tab._rows) do
+        obj.Visible = true
+    end
+    for _, it in ipairs(tab._inputs) do
         if it._objs then
-            for _, obj in ipairs(it._objs) do obj.Visible = true end
+            for _, obj in ipairs(it._objs) do
+                obj.Visible = true
+            end
         end
         if it.onShow then it.onShow() end
     end
@@ -176,7 +210,7 @@ function IreXion:_switchTab(tab)
     self._activeTab  = tab
     self._inputItems = {}
 
-    -- Re-register all tab buttons
+    -- Re-register tab switch buttons
     for _, t in ipairs(self._tabs) do
         local tt  = t
         local tY  = tt._indicator.Position.Y
@@ -194,7 +228,7 @@ function IreXion:_switchTab(tab)
         })
     end
 
-    -- Register active tab's inputs
+    -- Register active tab inputs
     for _, it in ipairs(tab._inputs) do
         table.insert(self._inputItems, it)
     end
@@ -246,7 +280,6 @@ end
 -- ═════════════════════════════════════════════════════════════
 --  TAB METHODS
 -- ═════════════════════════════════════════════════════════════
-
 function TabMethods:_nextY()
     local y    = self._rowY
     self._rowY = self._rowY + CFG.ROW_H
@@ -254,7 +287,12 @@ function TabMethods:_nextY()
 end
 
 function TabMethods:_sep(y)
-    local s = Sq(self._cx+CFG.PAD, y+CFG.ROW_H-2, self._cw-CFG.PAD*2, 1, COL.SEPARATOR, true, 4)
+    local s = Sq(
+        self._cx + CFG.PAD,
+        y + CFG.ROW_H - 2,
+        self._cw - CFG.PAD*2,
+        1, COL.SEPARATOR, true, 4
+    )
     table.insert(self._rows, s)
 end
 
@@ -264,7 +302,7 @@ function TabMethods:AddButton(text, callback)
     local cx, cw = self._cx, self._cw
 
     local bg  = Sq(cx+CFG.PAD, y+4, cw-CFG.PAD*2, 26, COL.DARK, true, 3)
-    local lbl = Tx(cx+cw/2,    y+10, text, 14, COL.WHITE, 4, true)
+    local lbl = Tx(cx+cw/2, y+10, text, 14, COL.WHITE, 4, true)
     table.insert(self._rows, bg)
     table.insert(self._rows, lbl)
     self:_sep(y)
@@ -285,13 +323,13 @@ end
 function TabMethods:AddToggle(text, default, callback)
     local y      = self:_nextY()
     local cx, cw = self._cx, self._cw
-    local isOn   = default == true
+    local isOn   = (default == true)
 
-    local lbl    = Tx(cx+12,    y+8, text, 14, COL.WHITE, 4)
-    local track  = Sq(cx+cw-52, y+5, 40, 20, COL.TOGGLE_BG, true, 4)
-    local border = Sq(cx+cw-52, y+5, 40, 20, COL.BORDER2, false, 5, 1)
+    local lbl    = Tx(cx+12,    y+8, text, 14, COL.WHITE,    4)
+    local track  = Sq(cx+cw-52, y+5, 40, 20, COL.TOGGLE_BG, true,  4)
+    local border = Sq(cx+cw-52, y+5, 40, 20, COL.BORDER2,   false, 5, 1)
     local knob   = Sq(
-        isOn and (cx+cw-52+40-18) or (cx+cw-52+2),
+        isOn and (cx+cw-52+22) or (cx+cw-52+2),
         y+7, 16, 16,
         isOn and COL.GREEN or COL.GRAY,
         true, 6
@@ -306,10 +344,10 @@ function TabMethods:AddToggle(text, default, callback)
     local function apply()
         if isOn then
             knob.Color    = COL.GREEN
-            knob.Position = Vector2.new(track.Position.X+track.Size.X-18, track.Position.Y+2)
+            knob.Position = Vector2.new(track.Position.X + 22, track.Position.Y + 2)
         else
             knob.Color    = COL.GRAY
-            knob.Position = Vector2.new(track.Position.X+2, track.Position.Y+2)
+            knob.Position = Vector2.new(track.Position.X + 2,  track.Position.Y + 2)
         end
     end
 
@@ -363,8 +401,8 @@ function TabMethods:AddDualLabel(leftText, rightText)
     local y      = self:_nextY()
     local cx, cw = self._cx, self._cw
 
-    local l = Tx(cx+12,                    y+8, leftText,  14, COL.WHITE, 4)
-    local r = Tx(cx+cw-(#rightText*8)-8,   y+8, rightText, 14, COL.WHITE, 4)
+    local l = Tx(cx+12,                  y+8, leftText,  14, COL.WHITE, 4)
+    local r = Tx(cx+cw-(#rightText*8)-8, y+8, rightText, 14, COL.WHITE, 4)
     table.insert(self._rows, l)
     table.insert(self._rows, r)
     self:_sep(y)
@@ -386,9 +424,9 @@ function TabMethods:AddSlider(text, min, max, default, callback)
     local pct    = (value - min) / (max - min)
 
     local header = Tx(cx+cw/2,    y+4,  text.." - "..math.floor(value), 13, COL.WHITE, 4, true)
-    local track  = Sq(cx+CFG.PAD, y+20, trackW,     8, COL.DARK,  true, 4)
-    local fill   = Sq(cx+CFG.PAD, y+20, trackW*pct, 8, COL.GREEN, true, 5)
-    local sep    = Sq(cx+CFG.PAD, y+CFG.ROW_H+6-2, trackW, 1, COL.SEPARATOR, true, 4)
+    local track  = Sq(cx+CFG.PAD, y+20, trackW,      8, COL.DARK,  true, 4)
+    local fill   = Sq(cx+CFG.PAD, y+20, trackW*pct,  8, COL.GREEN, true, 5)
+    local sep    = Sq(cx+CFG.PAD, y+CFG.ROW_H+4, trackW, 1, COL.SEPARATOR, true, 4)
 
     table.insert(self._rows, header)
     table.insert(self._rows, track)
@@ -402,8 +440,8 @@ function TabMethods:AddSlider(text, min, max, default, callback)
         update = function(mx, my, mouse1, lastMouse1)
             if mouse1 and not lastMouse1 then
                 if track.Visible
-                and mx >= track.Position.X and mx <= track.Position.X+track.Size.X
-                and my >= track.Position.Y-6 and my <= track.Position.Y+track.Size.Y+6 then
+                and mx >= track.Position.X and mx <= track.Position.X + track.Size.X
+                and my >= track.Position.Y-6 and my <= track.Position.Y + track.Size.Y+6 then
                     dragging = true
                 end
             end
@@ -411,7 +449,7 @@ function TabMethods:AddSlider(text, min, max, default, callback)
             if dragging and mouse1 and track.Visible then
                 local rel   = math.clamp(mx - track.Position.X, 0, track.Size.X)
                 local p     = rel / track.Size.X
-                value       = min + (max-min)*p
+                value       = min + (max - min) * p
                 fill.Size   = Vector2.new(track.Size.X * p, 8)
                 header.Text = text.." - "..math.floor(value)
                 if callback then pcall(callback, math.floor(value)) end
@@ -452,7 +490,7 @@ function TabMethods:AddDropdown(text, options, callback)
     local itemObjs = {}
 
     for i, opt in ipairs(options) do
-        local iy  = y + CFG.ROW_H*i
+        local iy  = y + CFG.ROW_H * i
         local ibg = Sq(cx+CFG.PAD, iy, cw-CFG.PAD*2, 26, COL.ITEM_BG, true, 20)
         local itx = Tx(cx+16, iy+6, opt, 13, COL.WHITE, 21)
         ibg.Visible = false
@@ -528,7 +566,6 @@ function TabMethods:AddBind(text, defaultKey, callback)
     table.insert(self._inputs, {
         _objs  = {lbl, keyLabel, sep, hitBox},
         update = function(mx, my, mouse1, lastMouse1)
-            -- Click hitbox to start listening
             if mouse1 and not lastMouse1 then
                 if hitBox.Visible and Hit(hitBox, mx, my) then
                     listening      = true
@@ -540,11 +577,11 @@ function TabMethods:AddBind(text, defaultKey, callback)
             if listening then
                 for i = 1, 255 do
                     if iskeypressed(i) then
-                        keyCode = i
-                        listening = false
-                        local kn = KEY_NAMES[i] or "?"
-                        keyLabel.Text     = kn
-                        keyLabel.Color    = COL.WHITE
+                        keyCode        = i
+                        listening      = false
+                        local kn       = KEY_NAMES[i] or "?"
+                        keyLabel.Text  = kn
+                        keyLabel.Color = COL.WHITE
                         keyLabel.Position = Vector2.new(cx+cw-(#kn*8)-12, y+8)
                         if callback then pcall(callback, keyCode, kn) end
                         break
@@ -554,7 +591,7 @@ function TabMethods:AddBind(text, defaultKey, callback)
                 if not debounce and keyCode ~= 0 and iskeypressed(keyCode) then
                     debounce = true
                     if callback then pcall(callback, keyCode, KEY_NAMES[keyCode] or "?") end
-                    task.delay(0.2, function() debounce = false end)
+                    _delay(0.2, function() debounce = false end)
                 end
             end
         end
