@@ -23,9 +23,8 @@ IreXion.__index = IreXion
 local drawings    = {}   -- all Drawing objects (for cleanup)
 local connections = {}   -- all RBXScriptConnections
 
--- Wait for LocalPlayer to be available
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait() and Players.LocalPlayer
+-- Matcha exposes Players as a global — use it directly
+local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
 local function newDrawing(class, props)
