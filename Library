@@ -23,10 +23,6 @@ IreXion.__index = IreXion
 local drawings    = {}   -- all Drawing objects (for cleanup)
 local connections = {}   -- all RBXScriptConnections
 
--- Matcha exposes Players as a global — use it directly
-local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
-
 local function newDrawing(class, props)
     local d = Drawing.new(class)
     for k, v in pairs(props) do d[k] = v end
@@ -72,6 +68,10 @@ end
 -- ------------------------------------------------
 function IreXion:CreateWindow(cfg)
     cfg = cfg or {}
+    -- Matcha Players global — fetched here so LocalPlayer is ready
+    local LocalPlayer = Players.LocalPlayer
+    local Mouse = LocalPlayer:GetMouse()
+
     local title  = cfg.Title  or "IreXion"
     local winW   = cfg.Width  or 580
     local winH   = cfg.Height or 400
