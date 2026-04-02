@@ -1,0 +1,86 @@
+local espSlots = {}
+
+local chestESP = true
+
+
+
+
+
+
+
+
+-- ─── ESP helpers ──────────────────────────────────────────────────────────────
+local function espLabel(col)
+    local t = Drawing.new("Text")
+    t.Color = col; t.Size = 13; t.Outline = true
+    t.Center = true; t.Font = Drawing.Fonts.SystemBold
+    t.Visible = false; return t
+end
+
+local function espRoot(m)
+    return m:FindFirstChild("HumanoidRootPart") or m:FindFirstChild("LowerTorso")
+        or m:FindFirstChild("UpperTorso") or m:FindFirstChild("Head")
+        or m:FindFirstChildOfClass("MeshPart") or m:FindFirstChildOfClass("BasePart")
+end
+
+local function espGet(m, col)
+    if not espSlots[m] then
+        espSlots[m] = {label=espLabel(col), root=espRoot(m), text="", col=col}
+    end
+    return espSlots[m]
+end
+
+local function espRemove(m)
+    if espSlots[m] then
+        espSlots[m].label.Visible = false
+        espSlots[m].label:Remove()
+        espSlots[m] = nil
+    end
+end
+
+-- ─── scanner ──────────────────────────────────────────────────────────────────
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        local active = {}
+        --example scan for things
+        local chestFolder = game.Workspace:FindFirstChild("Chests")
+        if chestFolder and chestESP then
+            for _, chest in ipairs(chestFolder:GetChildren()) do
+                active[chest] = true
+                local slot = espGet(chest, Color3.fromRGB(238, 255, 0))
+                slot.text = chest.Name
+            end
+        end
+
+
+        for model in pairs(espSlots) do
+            if not active[model] then espRemove(model) end
+        end
+    end
+end)
+
+
+
+
+-- ─── render loop ──────────────────────────────────────────────────────────────
+task.spawn(function()
+    while true do
+        task.wait()
+        for model, slot in pairs(espSlots) do
+            local root = slot.root
+            if not root or not root.Parent then
+                slot.label.Visible = false
+            else
+                local sp, on = WorldToScreen(root.Position)
+                if on then
+                    slot.label.Text     = slot.text
+                    slot.label.Position = Vector2.new(sp.X, sp.Y - 20)
+                    slot.label.Visible  = true
+                else
+                    slot.label.Visible = false
+                end
+            end
+        end
+    end
+end)
